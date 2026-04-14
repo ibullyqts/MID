@@ -4,47 +4,62 @@ import random
 from instagrapi import Client
 from concurrent.futures import ThreadPoolExecutor
 
-# --- ⚙️ CONFIGURATION ---
-SESSION_ID = os.environ.get("INSTA_COOKIE") # Your sessionid
-THREAD_ID = os.environ.get("TARGET_THREAD_ID") # The chat ID
+# --- ⚙️ NITRO-BURST CONFIGURATION ---
+SESSION_ID = os.environ.get("INSTA_COOKIE")      # Your sessionid
+THREAD_ID = os.environ.get("TARGET_THREAD_ID")   # The numeric Chat ID
 TARGET_NAME = os.environ.get("TARGET_NAME", "EZRA")
-THREADS = 5  # Number of simultaneous "shooters"
+THREADS = 4                                      # Simultaneous shooters
+BLOCK_COUNT = 15                                 # Lines per message
 
 def burst_worker(cl, thread_id, target_name, worker_id):
-    """Fires messages as fast as the network allows"""
+    """Fires heavy-duty message blocks directly to the API"""
     emojis = ["⭕", "☣️", "🛑", "🌀", "🚨", "💠", "💮"]
     
-    print(f"🔥 Worker {worker_id} initialized.")
+    print(f"🔥 [Worker {worker_id}] Engine Synchronized.")
     
     while True:
         try:
             emo = random.choice(emojis)
-            # Creating the heavy-duty text block
-            text = f"【 {target_name} 】 𝚂ᴀ𝚈 𝐃ᴀ𝐃𝐃𝐘 {emo}\n" * 10
-            text += f"⚡ ID: {random.randint(1000, 9999)}"
+            
+            # --- THE MEGA-BLOCK CONSTRUCTION ---
+            # Bold unicode styling with visual separators
+            line = f"【﻿ {target_name} 】 𝚂ᴀ𝚈 【﻿ＰＲＶＲ】 𝐃ᴀᴅᴅ𝐘 {emo}\n"
+            border = "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+            
+            # Combine into a single massive wall of text
+            message_payload = (line + border) * BLOCK_COUNT
+            message_payload += f"\n⚡ BURST-ID: {random.randint(10000, 99999)}"
 
-            # Direct API call (No browser rendering)
-            cl.direct_send(text, thread_ids=[thread_id])
-            print(f"✅ [Worker {worker_id}] Sent successfully.")
+            # Direct API Broadcast
+            cl.direct_send(message_payload, thread_ids=[thread_id])
+            print(f"✅ [Worker {worker_id}] Sent 15-Block Wall.")
+            
+            # Small jitter to prevent instant socket closure by server
+            time.sleep(random.uniform(0.3, 0.8))
             
         except Exception as e:
-            print(f"⚠️ [Worker {worker_id}] Blocked or Error: {e}")
-            time.sleep(5)  # Wait if rate limited
+            print(f"⚠️ [Worker {worker_id}] Error: {e}")
+            # If rate limited, wait longer before retrying
+            time.sleep(15)
 
 def main():
     if not SESSION_ID or not THREAD_ID:
-        print("❌ Missing Environment Variables!")
+        print("❌ ERROR: Set INSTA_COOKIE and TARGET_THREAD_ID environment variables!")
         return
 
     cl = Client()
     
-    # Login via sessionid to bypass 2FA/Email verification
-    print("📡 Syncing with Instagram API...")
-    cl.login_by_sessionid(SESSION_ID)
-    
-    print(f"🚀 NITRO-BURST STARTING ON THREAD: {THREAD_ID}")
+    try:
+        print("📡 Establishing API Connection...")
+        cl.login_by_sessionid(SESSION_ID)
+        print(f"🚀 AUTHENTICATED: Target Thread {THREAD_ID}")
+    except Exception as e:
+        print(f"❌ LOGIN FAILED: {e}")
+        return
 
-    # Launching multiple workers on different threads for parallel firing
+    print(f"🔥 STARTING NITRO BURST ({THREADS} THREADS)...")
+
+    # Parallel execution for maximum velocity
     with ThreadPoolExecutor(max_workers=THREADS) as executor:
         for i in range(THREADS):
             executor.submit(burst_worker, cl, THREAD_ID, TARGET_NAME, i+1)
