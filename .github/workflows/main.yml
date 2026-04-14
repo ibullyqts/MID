@@ -26,4 +26,4 @@ jobs:
           INSTA_COOKIE: ${{ secrets.INSTA_COOKIE }}
           TARGET_THREAD_ID: ${{ secrets.TARGET_THREAD_ID }}
           TARGET_NAME: ${{ secrets.TARGET_NAME }}
-        run: python your_script_name.py
+        run: python main.py
