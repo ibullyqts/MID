@@ -20,7 +20,7 @@ def burst_worker(cl, thread_id, target_name, worker_id):
         try:
             emo = random.choice(emojis)
             # Creating the heavy-duty text block
-            text = f"【 {target_name} 】 ➠➠चुदाई का बकरा🪩________________________/ {emo}\n" * 10
+            text = f"【 {target_name} 】 ➠➠चुदाई का बकरा {emo}\n" * 10
             text += f"⚡ ID: {random.randint(1000, 9999)}"
 
             # Direct API call (No browser rendering)
