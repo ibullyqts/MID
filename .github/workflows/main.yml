@@ -1,32 +1,32 @@
-name: Multi-Account Overdrive
+name: "Double ID Overdrive"
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: # Allows you to start it manually
 
 jobs:
   burst:
     runs-on: ubuntu-latest
     strategy:
+      # This creates 2 separate machines (Job 1 and Job 2)
       matrix:
-        # Machine 1 uses Cookie 1, Machine 2 uses Cookie 2
-        id: [1, 2]
+        account_index: [1, 2]
     
     steps:
-      - name: Checkout Code
+      - name: "Checkout Code"
         uses: actions/checkout@v4
 
-      - name: Setup Python
+      - name: "Set up Python"
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
 
-      - name: Install Dependencies
+      - name: "Install dependencies"
         run: pip install instagrapi
 
-      - name: Run Targeted Worker
+      - name: "Run Rapid Fire Agent"
         env:
-          # This logic selects the secret based on the matrix ID
-          INSTA_COOKIE: ${{ matrix.id == 1 && secrets.INSTA_COOKIE_1 || secrets.INSTA_COOKIE_2 }}
+          # Dynamically picks the secret based on which machine is running
+          INSTA_COOKIE: ${{ matrix.account_index == 1 && secrets.INSTA_COOKIE_1 || secrets.INSTA_COOKIE_2 }}
           TARGET_THREAD_ID: ${{ secrets.TARGET_THREAD_ID }}
           TARGET_NAME: ${{ secrets.TARGET_NAME }}
         run: python main.py
