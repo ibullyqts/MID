@@ -4,63 +4,52 @@ import re
 import random
 from playwright.async_api import async_playwright
 
-# --- ⚙️ NITRO CONFIG ---
-WORKERS = 5            
-PULSE_DELAY = 120      # Slightly increased to 120ms to prevent instant silent-block
+# --- ⚙️ IRONCLAD SETTINGS ---
+WORKERS = 3            # Reduced to 3 per machine for better stability (15 total)
+PULSE_DELAY = 150      # 150ms is the "Sweet Spot" to avoid silent drops
 RESTART_CYCLE = 240    
+
+def get_branding_payload(target_name):
+    emojis = ["⭕", "☣️", "🛑", "🌀", "🚨", "💠"]
+    emo = random.choice(emojis)
+    # The 20-line block you requested
+    line = f"【 {target_name} 】 𝚂ᴀ𝚈 【﻿ＰＲＶＲ】 𝐃ᴀ𝐃𝐃𝐘 {emo} ____________________/\n"
+    branding = line * 20
+    salt = f"\n⚡ ID: {random.randint(1000, 9999)}"
+    return branding + salt
 
 async def hyper_worker(context, thread_id, target_name, worker_id):
     page = await context.new_page()
     
     try:
         print(f"🚀 [Worker {worker_id}] Syncing with Instagram...")
-        # We use 'networkidle' to ensure all security tokens are loaded
+        # Mobile viewport is lighter and faster for DMs
         await page.goto(f"https://www.instagram.com/direct/t/{thread_id}/", wait_until="networkidle")
         
-        # ⚡ THE JS INJECTION (Updated CSRF Logic)
-        await page.evaluate("""
-            async ({threadId, delay, name}) => {
-                setInterval(async () => {
-                    // Grab CSRF from IG's internal object - the most reliable way
-                    const csrf = window._sharedData?.config?.csrf_token || 
-                                 document.cookie.match(/csrftoken=([^;]+)/)?.[1];
-                    
-                    const url = `/api/v1/web/direct_v2/threads/${threadId}/items/send_text/`;
-                    
-                    const emojis = ["⭕", "☣️", "🛑", "🌀", "🚨", "💠"];
-                    const emo = emojis[Math.floor(Math.random() * emojis.length)];
-                    const branding = `【 ${name} 】 𝚂ᴀ𝚈 【﻿ＰＲＶＲ】 𝐃ᴀ𝐃𝐃𝐘 ${emo} ____________________/\\n`.repeat(20);
-                    const salt = "\\n⚡ ID: " + Math.random().toString(36).substring(7);
-
-                    const payload = new URLSearchParams();
-                    payload.append('text', branding + salt);
-                    payload.append('client_context', Math.random().toString(36));
-                    payload.append('mutation_token', Math.random().toString(36));
-                    payload.append('offline_threading_id', Math.random().toString(36));
-
-                    fetch(url, {
-                        method: 'POST',
-                        body: payload,
-                        headers: {
-                            'X-CSRFToken': csrf,
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                            'X-IG-App-ID': '936619743392459',
-                            'X-Instagram-AJAX': '1'
-                        }
-                    }).then(res => {
-                        if (res.status === 200) console.log("SUCCESS");
-                        else console.log("FAILED: " + res.status);
-                    });
-                }, delay);
-            }
-        """, {"threadId": thread_id, "delay": PULSE_DELAY, "name": target_name})
+        # Locate the message box
+        # Instagram DMs use a contenteditable div or a textarea
+        msg_box = page.locator('div[role="textbox"], textarea[placeholder*="Message"]').first
         
-        print(f"🔥 [Worker {worker_id}] NITRO ACTIVE - Firing Packets.")
-        await asyncio.sleep(RESTART_CYCLE)
-        
+        if await msg_box.is_visible():
+            print(f"🔥 [Worker {worker_id}] TARGET LOCKED. Firing...")
+            
+            while True:
+                payload = get_branding_payload(target_name)
+                
+                # NATIVE EMULATION (Harder to detect than fetch)
+                await msg_box.fill(payload)
+                await page.keyboard.press("Enter")
+                
+                # Small wait to let the DOM clear
+                await asyncio.sleep(PULSE_DELAY / 1000)
+                
+        else:
+            print(f"❌ [Worker {worker_id}] Message box not found. Check Thread ID.")
+
     except Exception as e:
-        print(f"⚠️ [Worker {worker_id}] Stream Error: {e}")
+        print(f"⚠️ [Worker {worker_id}] Error: {e}")
+    finally:
+        await page.close()
 
 async def main():
     cookie_raw = os.environ.get("INSTA_COOKIE")
@@ -75,9 +64,11 @@ async def main():
     sid_value = sid.group(1) if sid else cookie_raw
 
     async with async_playwright() as p:
+        # Launching with specific arguments to look like a real user
         browser = await p.chromium.launch(headless=True)
         context = await browser.new_context(
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
+            user_agent="Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1",
+            viewport={'width': 390, 'height': 844}
         )
         
         await context.add_cookies([{
