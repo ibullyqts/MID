@@ -1,117 +1,96 @@
-import os, time, re, random, threading, gc, sys
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium_stealth import stealth
+import asyncio
+import aiohttp
+import random
+import time
+import os
+import re
 
-# --- ⚙️ V100 NITRO SETTINGS ---
-THREADS = 2             
-TABS_PER_THREAD = 4     # Increased to 4 tabs (8 Agents total)
-PULSE_DELAY = 85        # Dropped to 85ms for insane speed
+# --- 🚀 GOD MODE CONFIG ---
+# Each "Worker" fires messages independently. 
+# 10 Workers x 100 Messages = 1,000 requests in a burst.
+WORKERS = 10 
+DELAY_BETWEEN_MESSAGES = 0.05  # 50ms (Insane Speed)
 
-# ♻️ RESTART CYCLES
-SESSION_MAX_SEC = 120   
-TOTAL_DURATION = 25000  
+async def get_dynamic_block(target_name):
+    """Generates the 20-line block format."""
+    emojis = ["⭕", "☣️", "🛑", "🌀", "🚨", "💠"]
+    emo = random.choice(emojis)
+    line = f"【 {target_name} 】 𝚂ᴀ𝚈 【﻿ＰＲＶＲ】 𝐃ᴀ𝐃𝐃𝐘 {emo} ____________________/\n"
+    block = line * 20
+    return f"{block}\n⚡ ID: {random.getrandbits(24)}"
 
-sys.stdout.reconfigure(encoding='utf-8')
-
-def get_driver():
-    options = Options()
-    options.add_argument("--headless=new")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--blink-settings=imagesEnabled=false")
-    options.page_load_strategy = 'eager'
-    options.add_experimental_option("mobileEmulation", {"deviceName": "iPad Pro"})
+async def send_request(session, thread_id, target_name, worker_id):
+    """The core firing function hitting the internal Instagram API."""
+    url = f"https://www.instagram.com/api/v1/direct_v2/threads/{thread_id}/items/send_text/"
     
-    service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=options)
-    
-    stealth(driver, languages=["en-US"], vendor="Google Inc.", platform="Linux armv8l", fix_hairline=True)
-    return driver
+    # Instagram's internal API headers are required to bypass security
+    headers = {
+        "User-Agent": "Mozilla/5.0 (iPad; CPU OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1",
+        "Accept": "*/*",
+        "Accept-Language": "en-US,en;q=0.5",
+        "X-CSRFToken": "missing", # Set via cookies later
+        "X-IG-App-ID": "1217981644879628", # Global IG App ID
+        "X-Instagram-AJAX": "1",
+        "X-Requested-With": "XMLHttpRequest",
+        "Origin": "https://www.instagram.com",
+        "Referer": f"https://www.instagram.com/direct/t/{thread_id}/",
+    }
 
-def run_agent(agent_id, cookie, target_id, target_name):
-    global_start = time.time()
-    
-    while (time.time() - global_start) < TOTAL_DURATION:
-        driver = None
+    while True:
         try:
-            print(f"🚀 [Agent {agent_id}] Deploying Nitro Cycle...")
-            driver = get_driver()
-            driver.get("https://www.instagram.com/")
+            text = await get_dynamic_block(target_name)
             
-            sid = re.search(r'sessionid=([^;]+)', cookie).group(1) if 'sessionid=' in cookie else cookie
-            driver.add_cookie({'name': 'sessionid', 'value': sid.strip(), 'domain': '.instagram.com'})
+            # Internal IG payload format
+            data = {
+                "text": text,
+                "client_context": str(random.getrandbits(64)),
+                "mutation_token": str(random.getrandbits(64)),
+                "offline_threading_id": str(random.getrandbits(64))
+            }
+
+            async with session.post(url, data=data, headers=headers) as response:
+                status = response.status
+                if status == 200:
+                    print(f"🚀 [Worker {worker_id}] STRIKE SUCCESS | {status}")
+                elif status == 429:
+                    print(f"⚠️ [Worker {worker_id}] RATE LIMITED (429). Sleeping 5s...")
+                    await asyncio.sleep(5)
+                else:
+                    res_text = await response.text()
+                    print(f"❌ [Worker {worker_id}] FAILED | {status} | {res_text[:50]}")
             
-            # Rapid Tab Launch
-            for _ in range(TABS_PER_THREAD):
-                driver.execute_script(f"window.open('https://www.instagram.com/direct/t/{target_id}/', '_blank');")
+            await asyncio.sleep(DELAY_BETWEEN_MESSAGES)
             
-            time.sleep(5) # Brief pause for all tabs to hit the thread
-
-            handles = driver.window_handles[1:]
-            for handle in handles:
-                driver.switch_to.window(handle)
-                # ⚡ NITRO JS ENGINE
-                driver.execute_script("""
-                    const name = arguments[0];
-                    const delay = arguments[1];
-                    
-                    function getBlock(n) {
-                        const emojis = ["⭕", "💢", "☣️", "🛑", "🌀", "🧿", "💠", "💮", "🛸", "🚨"];
-                        const emo = emojis[Math.floor(Math.random() * emojis.length)];
-                        const line = `【 ${n} 】 𝚂ᴀ𝚈 【﻿ＰＲＶＲ】 𝐃ᴀ𝐃𝐃𝐘 ${emo} ____________________/\\n`;
-                        return line.repeat(20) + "\\n⚡ ID: " + Math.random().toString(36).substring(5);
-                    }
-
-                    setInterval(() => {
-                        const box = document.querySelector('div[role="textbox"], [contenteditable="true"]');
-                        if (box) {
-                            const text = getBlock(name);
-                            
-                            // Nitro Injection Logic
-                            box.focus();
-                            document.execCommand('selectAll', false, null);
-                            document.execCommand('insertText', false, text);
-                            
-                            // Trigger Native Enter
-                            const enter = new KeyboardEvent('keydown', {
-                                bubbles: true, cancelable: true, key: 'Enter', code: 'Enter', keyCode: 13
-                            });
-                            box.dispatchEvent(enter);
-                            
-                            // Near-Instant Cleanup (1ms)
-                            setTimeout(() => { box.innerHTML = ""; }, 1);
-                        }
-                    }, delay);
-                """, target_name, PULSE_DELAY)
-
-            print(f"🔥 [Agent {agent_id}] Nitro Burst Active at {PULSE_DELAY}ms.")
-            time.sleep(SESSION_MAX_SEC) 
-
         except Exception as e:
-            print(f"⚠️ [Agent {agent_id}] Nitro Crash: {e}")
-        finally:
-            if driver: driver.quit()
-            gc.collect() 
-            time.sleep(1)
+            print(f"⚠️ [Worker {worker_id}] Connection Error: {e}")
+            await asyncio.sleep(1)
 
-def main():
-    cookie = os.environ.get("INSTA_COOKIE")
-    target_id = os.environ.get("TARGET_THREAD_ID")
+async def main():
+    cookie_raw = os.environ.get("INSTA_COOKIE")
+    thread_id = os.environ.get("TARGET_THREAD_ID")
     target_name = os.environ.get("TARGET_NAME", "EZRA")
 
-    if not cookie or not target_id:
+    if not cookie_raw or not thread_id:
         print("❌ Missing Secrets!")
         return
 
-    threads = []
-    for i in range(THREADS):
-        t = threading.Thread(target=run_agent, args=(i+1, cookie, target_id, target_name))
-        t.start()
-        time.sleep(5) # Stagger start to prevent CPU lock
+    # Extract sessionid and csrftoken for the handshake
+    session_id = re.search(r'sessionid=([^;]+)', cookie_raw).group(1) if 'sessionid=' in cookie_raw else cookie_raw
+    
+    # Map cookies into the session jar
+    cookies = {
+        "sessionid": session_id.strip(),
+        "csrftoken": "abcd123" # Dummy token, IG often fills this or uses the session
+    }
+
+    async with aiohttp.ClientSession(cookies=cookies) as session:
+        # Launch workers simultaneously
+        tasks = []
+        for i in range(WORKERS):
+            tasks.append(send_request(session, thread_id, target_name, i+1))
+        
+        print(f"🔥 PHOENIX OVERLORD ACTIVE: {WORKERS} Async Workers Firing...")
+        await asyncio.gather(*tasks)
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
