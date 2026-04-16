@@ -1,120 +1,116 @@
-import os, time, re, random, gc, sys
-from multiprocessing import Process
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium_stealth import stealth
+import os
+import re
+import sys
+import asyncio
+import subprocess
 
-# --- ⚙️ HARDWARE TUNED SETTINGS ---
-MAX_BROWSERS = 2        # Uses both vCPU cores of the GitHub Runner
-TABS_PER_BROWSER = 3    # 3 Tabs per process (6 Agents total)
-PULSE_DELAY = 100       # Hyper-speed (100ms)
-SESSION_MAX_SEC = 120   # 2-Minute Restart cycle
-TOTAL_DURATION = 25000 
+# --- 🛠️ AUTO-INSTALLER ---
+def install_dependencies():
+    print("📦 Installing Playwright and dependencies...")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "playwright"])
+    subprocess.check_call([sys.executable, "-m", "playwright", "install", "chromium"])
+    print("✅ Installation Complete.\n")
 
-def get_driver():
-    options = Options()
-    options.add_argument("--headless=new")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--disable-extensions")
-    options.add_argument("--blink-settings=imagesEnabled=false")
-    
-    # Critical for 8GB RAM: Prevents memory leaks from history/cache
-    options.add_argument("--incognito") 
-    options.page_load_strategy = 'eager'
-    options.add_experimental_option("mobileEmulation", {"deviceName": "iPad Pro"})
-    
-    service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=options)
-    
-    stealth(driver, languages=["en-US"], vendor="Google Inc.", platform="Linux armv8l", fix_hairline=True)
-    return driver
+# --- ⚙️ CONFIGURATION ---
+TOTAL_AGENTS = 6        # Number of parallel tabs
+PULSE_DELAY = 100       # 100ms firing rate
+SESSION_MAX_SEC = 120   # 2-Minute Life Cycle
+TOTAL_DURATION = 25000  # Total run time
 
-def run_instance(instance_id, cookie, target_id, target_name):
-    """Parallel process worker"""
-    global_start = time.time()
-    
-    while (time.time() - global_start) < TOTAL_DURATION:
-        driver = None
-        try:
-            print(f"🚀 [Proc {instance_id}] Starting Hyper-Cycle...")
-            driver = get_driver()
-            driver.get("https://www.instagram.com/")
-            
-            # Injection
-            sid = re.search(r'sessionid=([^;]+)', cookie).group(1) if 'sessionid=' in cookie else cookie
-            driver.add_cookie({'name': 'sessionid', 'value': sid.strip(), 'domain': '.instagram.com'})
-            
-            # Open Tabs
-            for _ in range(TABS_PER_BROWSER):
-                driver.execute_script(f"window.open('https://www.instagram.com/direct/t/{target_id}/', '_blank');")
-                time.sleep(2)
+async def run_agent(context, target_id, target_name):
+    """Parallel Agent Worker"""
+    page = await context.new_page()
+    try:
+        print(f"📡 Agent Joining Thread: {target_id}")
+        # 'commit' wait_until is faster for high-speed tasks
+        await page.goto(f"https://www.instagram.com/direct/t/{target_id}/", wait_until="domcontentloaded")
+        
+        # --- ORIGINAL HYPER-ENGINE ---
+        await page.evaluate(f"""
+            () => {{
+                const name = "{target_name}";
+                const delay = {PULSE_DELAY};
+                
+                function getBlock(n) {{
+                    const emojis = ["👑", "⚡", "🔥", "🦈", "🦁", "💎", "⚔️", "🔱", "🧿", "🌪️"];
+                    const emo = emojis[Math.floor(Math.random() * emojis.length)];
+                    const line = `【 ${{n}} 】 SAY P R V R बाप ${{emo}____________________/\\n`;
+                    let block = "";
+                    for(let i=0; i<20; i++) {{ block += line; }}
+                    return block + "\\n⚡ ID: " + Math.random().toString(36).substring(7);
+                }}
 
-            handles = driver.window_handles[1:]
-            for handle in handles:
-                driver.switch_to.window(handle)
-                # --- ORIGINAL JS ENGINE RESTORED ---
-                driver.execute_script("""
-                    const name = arguments[0];
-                    const delay = arguments[1];
-                    
-                    function getBlock(n) {
-                        const emojis = ["👑", "⚡", "🔥", "🦈", "🦁", "💎", "⚔️", "🔱", "🧿", "🌪️"];
-                        const emo = emojis[Math.floor(Math.random() * emojis.length)];
-                        const line = `【 ${n} 】 SAY P R V R बाप ${emo} ____________________/\\n`;
-                        let block = "";
-                        for(let i=0; i<20; i++) { block += line; }
-                        return block + "\\n⚡ ID: " + Math.random().toString(36).substring(7);
-                    }
+                setInterval(() => {{
+                    const box = document.querySelector('div[aria-label="Message"], div[contenteditable="true"]');
+                    if (box) {{
+                        const text = getBlock(name);
+                        box.focus();
+                        // Direct DOM injection to bypass React's block
+                        document.execCommand('insertText', false, text);
+                        
+                        const enter = new KeyboardEvent('keydown', {{
+                            bubbles: true, cancelable: true, key: 'Enter', code: 'Enter', keyCode: 13
+                        }});
+                        box.dispatchEvent(enter);
+                        
+                        // Keeps RAM low on 8GB Runner
+                        setTimeout(() => {{ if(box.innerHTML.length > 0) box.innerHTML = ""; }}, 5);
+                    }}
+                }}, delay);
+            }}
+        """)
+        await asyncio.sleep(SESSION_MAX_SEC)
+    except Exception as e:
+        print(f"⚠️ Agent Error: {e}")
+    finally:
+        await page.close()
 
-                    setInterval(() => {
-                        const box = document.querySelector('div[role="textbox"], [contenteditable="true"]');
-                        if (box) {
-                            const text = getBlock(name);
-                            box.focus();
-                            document.execCommand('insertText', false, text);
-                            box.dispatchEvent(new Event('input', { bubbles: true }));
+async def main():
+    # Install before importing playwright to avoid ModuleNotFoundError
+    install_dependencies()
+    from playwright.async_api import async_playwright
 
-                            const enter = new KeyboardEvent('keydown', {
-                                bubbles: true, cancelable: true, key: 'Enter', code: 'Enter', keyCode: 13
-                            });
-                            box.dispatchEvent(enter);
-                            
-                            // Instant clear to keep DOM lightweight
-                            setTimeout(() => { if(box.innerHTML.length > 0) box.innerHTML = ""; }, 5);
-                        }
-                    }, delay);
-                """, target_name, PULSE_DELAY)
-
-            print(f"🔥 [Proc {instance_id}] All Agents Active. Cycling in 120s...")
-            time.sleep(SESSION_MAX_SEC)
-
-        except Exception as e:
-            print(f"⚠️ [Proc {instance_id}] Cycle Error: {e}")
-        finally:
-            if driver:
-                driver.quit()
-            gc.collect() 
-            time.sleep(2)
-
-if __name__ == "__main__":
     cookie = os.environ.get("INSTA_COOKIE")
     target_id = os.environ.get("TARGET_THREAD_ID")
     target_name = os.environ.get("TARGET_NAME", "EZRA")
 
     if not cookie or not target_id:
-        print("❌ Missing Environment Secrets!")
-        sys.exit(1)
+        print("❌ CRITICAL: Missing Environment Variables!")
+        return
 
-    procs = []
-    for i in range(MAX_BROWSERS):
-        p = Process(target=run_instance, args=(i+1, cookie, target_id, target_name))
-        p.start()
-        procs.append(p)
-        time.sleep(8) # Stagger to avoid login detection
+    sid = re.search(r'sessionid=([^;]+)', cookie).group(1) if 'sessionid=' in cookie else cookie
 
-    for p in procs:
-        p.join()
+    async with async_playwright() as p:
+        print("🚀 Launching Master Browser...")
+        browser = await p.chromium.launch(headless=True)
+        
+        # Context allows all tabs to share one login session in memory
+        context = await browser.new_context(
+            user_agent="Mozilla/5.0 (iPad; CPU OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1",
+            viewport={'width': 1024, 'height': 1366}
+        )
+        
+        await context.add_cookies([{
+            'name': 'sessionid',
+            'value': sid.strip(),
+            'domain': '.instagram.com',
+            'path': '/'
+        }])
+
+        start_run = asyncio.get_event_loop().time()
+        while (asyncio.get_event_loop().time() - start_run) < TOTAL_DURATION:
+            print(f"♻️ Starting Parallel Burst (Duration: {SESSION_MAX_SEC}s)")
+            
+            # This triggers all agents at the exact same time
+            tasks = [run_agent(context, target_id, target_name) for _ in range(TOTAL_AGENTS)]
+            await asyncio.gather(*tasks)
+            
+            print("🧹 Session complete. Refreshing agents...")
+            
+        await browser.close()
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("🛑 Script stopped by user.")
