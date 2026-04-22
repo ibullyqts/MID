@@ -2,48 +2,67 @@
 import asyncio, os, sys, random, re, gc
 from playwright.async_api import async_playwright
 
-# --- ⚙️ V100 HYBRID SETTINGS ---
+# --- ⚙️ V100 "ROTATING STRIKE" SETTINGS ---
 AGENTS_PER_MACHINE = 2    
 TABS_PER_AGENT = 2        
-PULSE_DELAY = 100         
+PULSE_DELAY = 100         # 100ms
 SESSION_MAX_SEC = 120     # 2-Minute RAM Flush
 
-# The Broken Record Pattern
-DADDY_PATTERN = r"({target}) 𝚂ᴀ𝚈 【﻿ＰＲＶ𝐑】 𝐃ᴀᴅᴅ𝐘 ~⭕"
-
 async def setup_stealth(page):
-    """Uses CDP to harden the browser and block tracking"""
-    client = await page.context.new_cdp_session(page)
-    # Block Instagram's logging/tracking to save CPU and hide activity
-    await client.send("Network.setBlockedURLs", {
-        "urls": ["*graph.instagram.com*", "*logging.instagram.com*", "*/logging/*", "*.facebook.com*"]
-    })
-    # Disable JS source maps to save RAM
-    await client.send("Page.addScriptToEvaluateOnNewDocument", {
-        "source": "delete window.cdc_adoQbh7K7L06el6ONX0W_Array; delete window.cdc_adoQbh7K7L06el6ONX0W_Promise;"
-    })
+    """Uses CDP to harden the browser and block Meta's tracking"""
+    try:
+        client = await page.context.new_cdp_session(page)
+        # Drop Instagram's anti-spam telemetry packets
+        await client.send("Network.setBlockedURLs", {
+            "urls": ["*graph.instagram.com*", "*logging.instagram.com*", "*/logging/*", "*.facebook.com*"]
+        })
+        # Mask the browser footprint
+        await client.send("Page.addScriptToEvaluateOnNewDocument", {
+            "source": "delete window.navigator.webdriver; window.chrome = { runtime: {} };"
+        })
+    except Exception:
+        pass
 
 async def run_tab(context, target_id, target_name, agent_id, tab_id):
     page = await context.new_page()
     try:
-        # 🛡️ Step 1: Apply CDP Shield
         await setup_stealth(page)
-
-        # 🚀 Step 2: Navigate to Target
+        
+        # Navigate to chat
         await page.goto(f"https://www.instagram.com/direct/t/{target_id}/", wait_until="commit", timeout=60000)
         await asyncio.sleep(8) 
         
-        # ⚡ Step 3: API Injection Strike
+        # ⚡ ROTATING INJECTION STRIKE
         await page.evaluate("""
             ([tName, mDelay]) => {
-                const pattern = `(${tName}) 𝚂ᴀ𝚈 【﻿ＰＲＶ𝐑】 𝐃ᴀᴅᴅ𝐘 ~⭕`;
-                const fullBlock = Array(24).fill(pattern).join('\\n');
+                // Circular emojis for rotation effect
+                const frames = ["⭕", "🌀", "🔴", "💠", "🧿", "🔘"];
+                let frameIndex = 0;
+
                 setInterval(() => {
                     const box = document.querySelector('div[role="textbox"], [contenteditable="true"]');
                     if (box) {
+                        const currentEmoji = frames[frameIndex % frames.length];
+                        const pattern = `(${tName}) 𝚂ᴀ𝚈 【﻿ＰＲＶ𝐑】 𝐃ᴀᴅᴅ𝐘 ~${currentEmoji}`;
+                        
+                        // 24-line high-impact block
+                        const fullBlock = Array(24).fill(pattern).join('\\n');
+
+                        // Native command for speed
                         document.execCommand('insertText', false, fullBlock);
-                        const enter = new KeyboardEvent('keydown', { bubbles: true, key: 'Enter', keyCode: 13 });
+                        
+                        // Dispatch input to wake up React
+                        box.dispatchEvent(new Event('input', { bubbles: true }));
+                        
+                        // Fire Enter
+                        const enter = new KeyboardEvent('keydown', { 
+                            bubbles: true, cancelable: true, key: 'Enter', code: 'Enter', keyCode: 13 
+                        });
                         box.dispatchEvent(enter);
+                        
+                        frameIndex++; 
+                        
+                        // Cleanup
                         setTimeout(() => { if(box.innerText.length > 0) box.innerHTML = ""; }, 5);
                     }
                 }, mDelay);
@@ -69,10 +88,12 @@ async def run_agent(agent_id, cookie, target_id, target_name):
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
             )
             
+            # Add Cookie
             sid_match = re.search(r'sessionid=([^;]+)', cookie)
             sid = sid_match.group(1) if sid_match else cookie
             await context.add_cookies([{'name': 'sessionid', 'value': sid.strip(), 'domain': '.instagram.com', 'path': '/'}])
             
+            # Parallel tabs
             tabs = [run_tab(context, target_id, target_name, agent_id, i+1) for i in range(TABS_PER_AGENT)]
             await asyncio.gather(*tabs)
             
@@ -85,11 +106,17 @@ async def main():
     target_name = os.environ.get("TARGET_NAME", "TARGET")
     
     if not cookie or not target_id:
+        print("❌ Critical: Secrets Missing!")
         return
 
+    print(f"🔥 PHOENIX V100 CLUSTER STARTING (Rotating Strike Mode)")
+    
     agents = [run_agent(i + 1, cookie, target_id, target_name) for i in range(AGENTS_PER_MACHINE)]
     await asyncio.gather(*agents)
 
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding='utf-8')
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass
