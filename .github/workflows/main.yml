@@ -1,33 +1,88 @@
-name: Phoenix V100 Hybrid Cluster (6-Hour)
+name: Phoenix V100 (5-Machine Matrix)
 
 on:
   workflow_dispatch:
   schedule:
-    # Runs every 6 hours sharp (00:00, 06:00, 12:00, 18:00 UTC)
-    - cron: "0 */6 * * *"
-
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true 
+    - cron: '0 */6 * * *'
 
 jobs:
-  launch:
+  run-loop:
     runs-on: ubuntu-latest
+    timeout-minutes: 350
     strategy:
       matrix:
-        # Running 5 machines every 6 hours = 20 strikes per day
-        machine-id: [1, 2, 3, 4, 5 ,6 ,7 ,8 ,9, 10, 11, 12]
+        machine-id: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+      fail-fast: false
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-      - name: Install
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install Dependencies
+      run: |
+        pip install selenium==4.9.0 selenium-stealth webdriver-manager
+
+    - name: 🔥 Run Phoenix Engine
+      env:
+        INSTA_COOKIE: ${{ secrets.INSTA_COOKIE }}
+        TARGET_THREAD_ID: ${{ secrets.TARGET_THREAD_ID }}
+        TARGET_NAME: ${{ secrets.TARGET_NAME }}
+        MACHINE_INDEX: ${{ matrix.machine-id }}
+      run: |
+        python main.py
+        while true; do
+          python -u main.py
+          echo "⚠️ Engine Exit. Respawning in 5s..."
+          sleep 5
+        done
+        python main.py        while true; do
+          python -u main.py
+          echo "⚠️ Engine Exit. Respawning in 5s..."
+          sleep 5
+        done
+
+    - name: 🔥 Run Phoenix Engine (Machine ${{ matrix.machine-id }})
+      env:
+        PYTHONIOENCODING: utf-8
+        INSTA_COOKIE: ${{ secrets.INSTA_COOKIE }}
+        TARGET_THREAD_ID: ${{ secrets.TARGET_THREAD_ID }}
+        MESSAGES: ${{ secrets.MESSAGES }}
+        MACHINE_INDEX: ${{ matrix.machine-id }} # Passes the ID to your script if needed
+      run: |
+        while true; do
+          echo "🚀 Starting Linux Turbo Engine on Machine #${MACHINE_INDEX}..."
+          
+          if python main.py; then
+            echo "✅ Script finished naturally."
+          else
+            echo "❌ Script crashed internally."
+          fi
+          
+          echo "⚠️ Crash Detected. Respawning in 10 seconds..."
+          sleep 10
+        done
+          MACHINE_INDEX: ${{ matrix.machine-id }}
         run: |
-          pip install playwright
-          playwright install chromium
-      - name: Run
-        env:
-          INSTA_COOKIE: ${{ secrets.INSTA_COOKIE }}
-          TARGET_THREAD_ID: ${{ secrets.TARGET_THREAD_ID }}
-          TARGET_NAME: ${{ secrets.TARGET_NAME }}
-        run: python -u main.py
+          # STAGGERED START: Spacing out the 5 machines to prevent IP flag
+          DELAY=$(( (MACHINE_INDEX - 1) * 15 ))
+          echo "⏳ Machine #${MACHINE_INDEX} waiting ${DELAY}s for slot..."
+          sleep $DELAY
+
+          while true; do
+            echo "🚀 Starting Hybrid JS-Engine..."
+            
+            # We use -u for unbuffered logs so you see the "✅ Tab Active" messages instantly
+            if python -u main.py; then
+              echo "♻️ Purge Cycle Complete. Restarting..."
+            else
+              echo "❌ Engine Crash Detected."
+            fi
+            
+            echo "⚠️ Cooling down for 10s..."
+            sleep 10
+          done
