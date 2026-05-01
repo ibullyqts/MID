@@ -11,9 +11,9 @@ from playwright.async_api import async_playwright
 from playwright_stealth import Stealth
 
 # --- ⚙️ V100 TUNED SETTINGS ---
-TABS_PER_MACHINE = 2    
-PULSE_DELAY = 110       
-TOTAL_STRIKE_TIME = 21000 # ~5.8 Hours
+TABS_PER_MACHINE = 2    # Keeping your proven setting
+PULSE_DELAY = 110       # Keeping your proven setting
+TOTAL_STRIKE_TIME = 21000 # ~5.8 Hours total runtime
 RESTART_INTERVAL = 1800   # Restart browser every 30m to clear RAM
 
 # 🔱 TELEGRAM CONFIG
@@ -35,26 +35,34 @@ async def run_strike(node_id, cookie, target_id, target_name):
 
     elapsed = 0
     while elapsed < TOTAL_STRIKE_TIME:
+        # 🔱 FRESH START: Clear previous run data
         profile_path = os.path.join(base_dir, f"run_{random.randint(100,999)}")
         
         async with async_playwright() as p:
+            user_agent = "Mozilla/5.0 (iPad; CPU OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1"
+            
             context = await p.chromium.launch_persistent_context(
                 user_data_dir=profile_path,
                 headless=True,
-                user_agent="Mozilla/5.0 (iPad; CPU OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1",
+                user_agent=user_agent,
+                viewport={'width': 1024, 'height': 1366},
+                is_mobile=True,
+                has_touch=True,
                 args=["--disable-dev-shm-usage", "--no-sandbox", "--disable-gpu"]
             )
 
+            # 🔱 STEALTH V2
             stealth = Stealth()
             await stealth.apply_stealth_async(context)
             
+            # Inject Cookie
             sid = re.search(r'sessionid=([^;]+)', cookie).group(1) if 'sessionid=' in cookie else cookie
             await context.add_cookies([{
                 'name': 'sessionid', 'value': sid.strip(), 
                 'domain': '.instagram.com', 'path': '/', 'secure': True, 'httpOnly': True
             }])
 
-            # ⚡ PILLAR SCRIPT WITH ALIGNMENT FIX
+            # ⚡ PILLAR SCRIPT WITH ALIGNMENT FIX (Using insertHTML for verticality)
             strike_script = """
                 (name, delay) => {
                     function getBlock(n) {
@@ -69,16 +77,18 @@ async def run_strike(node_id, cookie, target_id, target_name):
                         const baseLine = lines[Math.floor(Math.random() * lines.length)];
                         let block = "";
                         for(let i = 0; i < 21; i++) { block += baseLine + "\\n"; }
-                        return block;
+                        return block + "🔱 𝐏𝐇𝐎𝐄𝐍𝐈𝐗-𝐕𝟏𝟎𝟎: " + Math.random().toString(36).substring(7).toUpperCase();
                     }
                     function pulse() {
                         const box = document.querySelector('div[role="textbox"], [contenteditable="true"]');
                         if (box) {
                             box.focus();
+                            // 🔱 FIX: insertHTML + <br> replacement for Vertical Pillar
                             document.execCommand('insertHTML', false, getBlock(name).replace(/\\n/g, '<br>'));
                             box.dispatchEvent(new Event('input', { bubbles: true }));
                             box.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Enter', code: 'Enter', keyCode: 13 }));
                             window.sentCount = (window.sentCount || 0) + 1;
+                            setTimeout(() => { if(box.innerHTML.length > 0) box.innerHTML = ""; }, 5);
                         }
                         setTimeout(pulse, delay + (Math.random() * 20 - 10));
                     }
@@ -87,23 +97,26 @@ async def run_strike(node_id, cookie, target_id, target_name):
             """
 
             try:
-                page = await context.new_page()
-                await page.goto(f"https://www.instagram.com/direct/t/{target_id}/", wait_until="domcontentloaded")
+                pages = []
+                for i in range(TABS_PER_MACHINE):
+                    page = await context.new_page()
+                    await page.goto(f"https://www.instagram.com/direct/t/{target_id}/", wait_until="domcontentloaded")
+                    if "login" in page.url:
+                        await send_tg(f"❌ <b>SESSION DEAD</b>\nMachine {node_id}\nCookie Expired.")
+                        return
+                    await page.evaluate(strike_script, [target_name, PULSE_DELAY])
+                    pages.append(page)
                 
-                if "login" in page.url:
-                    await send_tg(f"❌ <b>SESSION DEAD</b>\nMachine {node_id}\nUpdate Cookie.")
-                    return
-
-                await page.evaluate(strike_script, [target_name, PULSE_DELAY])
-                
-                # Cycle Monitor (Runs for 30 mins)
-                for _ in range(3): 
+                # 🔱 Status Check: Send a report every 10 mins
+                for _ in range(3):
                     await asyncio.sleep(600)
-                    count = await page.evaluate("window.sentCount || 0")
-                    print(f"Machine {node_id} | Sent: {count}")
+                    total_sent = 0
+                    for pg in pages:
+                        total_sent += await pg.evaluate("window.sentCount || 0")
+                    await send_tg(f"📈 <b>Machine {node_id} Report</b>\nSent: {total_sent}\nUptime: {elapsed // 60}m")
 
                 elapsed += RESTART_INTERVAL
-                await send_tg(f"♻️ <b>Machine {node_id} Reloaded</b>\nRAM Cleared | Strike Continues")
+                await send_tg(f"♻️ <b>Machine {node_id} Reloading</b>\nClearing RAM | Session Secure")
                 
             except Exception as e:
                 await send_tg(f"⚠️ <b>Machine {node_id} Error</b>\n{str(e)[:50]}")
