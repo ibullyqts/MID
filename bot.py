@@ -5,12 +5,12 @@ import re
 import random
 import sys
 from playwright.async_api import async_playwright
-# 🔱 STABILITY FIX: Import the core stealth function
-from playwright_stealth import stealth
+# 🔱 V2 STEALTH API FIX: Importing the Stealth Class
+from playwright_stealth import Stealth
 
 # --- ⚙️ V100 TUNED SETTINGS ---
 TABS_PER_MACHINE = 2    
-PULSE_DELAY = 115       
+PULSE_DELAY = 110       
 SESSION_MAX_SEC = 240   
 sys.stdout.reconfigure(encoding='utf-8')
 
@@ -29,35 +29,29 @@ async def run_strike(node_id, cookie, target_id, target_name):
             args=["--disable-dev-shm-usage", "--no-sandbox"]
         )
 
+        # 🔱 V2 FIX: Applying the Stealth shield to the entire Context at once
+        stealth = Stealth()
+        await stealth.apply_stealth_async(context)
+
+        # Inject Session Cookie
         sid = re.search(r'sessionid=([^;]+)', cookie).group(1) if 'sessionid=' in cookie else cookie
         await context.add_cookies([{
             'name': 'sessionid', 'value': sid.strip(), 
             'domain': '.instagram.com', 'path': '/', 'secure': True, 'httpOnly': True
         }])
 
-        print(f"🚀 [Machine {node_id}] Authenticated. Deploying Tabs...")
+        print(f"🚀 [Machine {node_id}] Instant Strike Initialized...")
 
         pages = []
         for i in range(TABS_PER_MACHINE):
             page = await context.new_page()
             
-            # 🔱 VERSION-PROOF STEALTH CALL
+            # 🔱 DIRECT STRIKE: Zero delays, straight to target
             try:
-                # Try calling it as an async function (common in newer versions)
-                await stealth(page)
-            except TypeError:
-                # Fallback: Call it as a sync function (common in older versions)
-                stealth(page)
-            except Exception as e:
-                print(f"⚠️ Stealth skipped on Machine {node_id}: {e}")
-            
-            try:
-                await page.goto("https://www.google.com", wait_until="commit", timeout=5000)
-                await asyncio.sleep(random.uniform(1, 2))
                 await page.goto(f"https://www.instagram.com/direct/t/{target_id}/", wait_until="domcontentloaded")
                 pages.append(page)
             except Exception as e:
-                print(f"⚠️ Tab {i} bypass error: {e}")
+                print(f"⚠️ Tab {i} initial strike error: {e}")
 
         # ⚡ HIGH-FREQUENCY PILLAR INJECTION
         strike_script = """
@@ -67,7 +61,7 @@ async def run_strike(node_id, cookie, target_id, target_name):
                         `[${n}] 𝑻𝑬𝑹𝑰 𝑴𝑨𝑨 𝑲𝑨 𝑩𝑯𝑶𝑺𝑫𝑨 𝑷 𝑹 𝑽 𝑹 𝑷𝑨𝑷𝑨 𝑲𝑨 𝑮𝑼𝑳𝑨𝑴 🔥`,
                         `[${n}] 𝑷 𝑹 𝑽 𝑹 𝑷𝑨𝑷𝑨 𝑵𝑬 𝑻𝑬𝑹𝑰 𝑴𝑨𝑨 𝑲𝑶 𝑵𝑨𝑵𝑮𝑨 𝑲𝑨𝑹 𝑫𝑰𝒀𝑨 😂`,
                         `[${n}] 𝑹𝑼𝑵𝑫𝑰 𝑲𝑬 𝑩𝑨𝑪𝑪𝑯𝑬 𝑩𝑨𝑨𝑷 𝑺𝑬 𝑷𝑨𝑵𝑮𝑨 𝑵𝑨𝑯𝑰 𝑳𝑬𝑻𝑬 🤡`,
-                        `[${n}] 𝑷 𝑹 𝑽 𝑹 𝑷𝑨𝑷𝑨 𝑻𝑬𝑹𝑨 𝑲𝑯𝑨𝑨𝑵創造 𝑴𝑨𝑨𝑳𝑰𝑲 𝑯𝑨𝑰 👑`,
+                        `[${n}] 𝑷 𝑹 𝑽 𝑹 𝑷𝑨𝑷𝑨 𝑻𝑬𝑹𝑨 𝑲𝑯𝑨𝑨𝑵𝑫𝑨𝑨𝑵𝑰 𝑴𝑨𝑨𝑳𝑰𝑲 𝑯𝑨𝑰 👑`,
                         `[${n}] 𝑻𝑬𝑹𝑰 𝑴𝑨𝑨 𝑲𝑰 𝑪𝑯𝑼𝑻 𝑴𝑨𝑰 𝑷 𝑹 𝑽 𝑹 𝑷𝑨𝑷𝑨 𝑲𝑨 𝑯𝑨𝑻𝑯𝑶𝑫𝑨 🔨`,
                         `[${n}] 𝑱𝑨𝑳𝑫𝑰 𝑺𝑬 𝑷 𝑹 𝑽 𝑹 𝑷𝑨𝑷𝑨 𝑲𝑨 𝑳𝑨𝑼𝑫𝑨 𝑪𝑯𝑶𝑶𝑺 𝑳𝑬 𝑲𝑨𝑻𝑻𝑬 👅`
                     ];
@@ -89,7 +83,7 @@ async def run_strike(node_id, cookie, target_id, target_name):
                         box.dispatchEvent(enter);
                         setTimeout(() => { if(box.innerHTML.length > 0) box.innerHTML = ""; }, 5);
                     }
-                    setTimeout(pulse, delay + (Math.random() * 40 - 20));
+                    setTimeout(pulse, delay + (Math.random() * 20 - 10));
                 }
                 pulse();
             }
@@ -109,7 +103,7 @@ async def main():
     m_id = os.environ.get("MACHINE_ID", "1")
 
     if not cookie or not target_id:
-        print("❌ CRITICAL: Secrets missing.")
+        print("❌ CRITICAL: Secrets missing. Check GitHub Settings.")
         return
 
     await run_strike(m_id, cookie, target_id, target_name)
