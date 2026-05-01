@@ -8,10 +8,10 @@ import httpx
 from playwright.async_api import async_playwright
 from playwright_stealth import Stealth
 
-# --- ⚙️ NITRO-TUNED SETTINGS ---
+# --- ⚙️ NITRO-STRIPPED SETTINGS ---
 TABS_PER_MACHINE = 2    
-PULSE_DELAY = 105       # Pushing the limit slightly
-CYCLE_DURATION = 60     # 🔱 Hard-refresh every 60s for zero-lag performance
+PULSE_DELAY = 100       # 🔱 Set to exactly 100ms
+CYCLE_DURATION = 60     # Refresh every minute to kill lag
 SESSION_MAX_SEC = 21000 
 sys.stdout.reconfigure(encoding='utf-8')
 
@@ -29,16 +29,23 @@ async def send_tg(msg):
 async def run_strike(node_id, cookie, target_id, target_name):
     async with async_playwright() as p:
         user_agent = "Mozilla/5.0 (iPad; CPU OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1"
-        profile_path = os.path.join(os.getcwd(), f"node_profile_{node_id}")
+        profile_path = os.path.join(os.getcwd(), f"n_{node_id}")
         
         context = await p.chromium.launch_persistent_context(
             user_data_dir=profile_path,
             headless=True,
             user_agent=user_agent,
-            viewport={'width': 1024, 'height': 1366},
-            is_mobile=True,
-            has_touch=True,
-            args=["--disable-dev-shm-usage", "--no-sandbox", "--disable-gpu", "--single-process"]
+            viewport={'width': 800, 'height': 600},
+            args=[
+                "--disable-dev-shm-usage",
+                "--no-sandbox",
+                "--disable-gpu",
+                "--disable-extensions",
+                "--mute-audio",
+                "--no-first-run",
+                "--disable-background-networking",
+                "--disable-sync"
+            ]
         )
 
         await Stealth().apply_stealth_async(context)
@@ -49,9 +56,9 @@ async def run_strike(node_id, cookie, target_id, target_name):
             'domain': '.instagram.com', 'path': '/', 'secure': True, 'httpOnly': True
         }])
 
-        await send_tg(f"⚡ <b>Machine {node_id} NITRO Active</b>\nCycle: 60s | Delay: 105ms")
+        await send_tg(f"🚀 <b>Machine {node_id} Online</b>\nDelay: 100ms | Mode: Nitro")
 
-        # ⚡ PILLAR SCRIPT (Restored Working Logic)
+        # ⚡ RESTORED SCRIPT (Optimized for Speed)
         strike_script = """
             (name, delay) => {
                 function getBlock(n) {
@@ -66,7 +73,7 @@ async def run_strike(node_id, cookie, target_id, target_name):
                     const baseLine = lines[Math.floor(Math.random() * lines.length)];
                     let block = "";
                     for(let i = 0; i < 21; i++) { block += baseLine + "\\n"; }
-                    return block + "🔱 𝐏-𝐕𝟏𝟎𝟎: " + Math.random().toString(36).substring(7).toUpperCase();
+                    return block + "🔱 " + Math.random().toString(36).substring(8).toUpperCase();
                 }
 
                 function pulse() {
@@ -76,7 +83,7 @@ async def run_strike(node_id, cookie, target_id, target_name):
                         document.execCommand('insertText', false, getBlock(name));
                         box.dispatchEvent(new Event('input', { bubbles: true }));
                         box.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Enter', keyCode: 13 }));
-                        setTimeout(() => { if(box.innerHTML.length > 0) box.innerHTML = ""; }, 5);
+                        box.innerHTML = "";
                     }
                     setTimeout(pulse, delay);
                 }
@@ -86,25 +93,22 @@ async def run_strike(node_id, cookie, target_id, target_name):
 
         elapsed = 0
         while elapsed < SESSION_MAX_SEC:
-            # 🔱 RELOAD FOR NITRO SPEED
             pages = []
             for i in range(TABS_PER_MACHINE):
                 pg = await context.new_page()
+                # Block media to keep CPU speed 100%
+                await pg.route("**/*.{png,jpg,jpeg,gif,webp,svg,mp4}", lambda route: route.abort())
                 try:
-                    await pg.goto(f"https://www.instagram.com/direct/t/{target_id}/", wait_until="domcontentloaded", timeout=30000)
+                    await pg.goto(f"https://www.instagram.com/direct/t/{target_id}/", wait_until="commit", timeout=20000)
                     await pg.evaluate(strike_script, [target_name, PULSE_DELAY])
                     pages.append(pg)
                 except: pass
             
             await asyncio.sleep(CYCLE_DURATION)
-            
-            # 🔱 FLUSH CACHE
-            for pg in pages:
-                await pg.close()
-            
+            for pg in pages: await pg.close()
             elapsed += CYCLE_DURATION
-            if elapsed % 600 == 0: # Status ping every 10 mins
-                await send_tg(f"📊 <b>Machine {node_id}</b>\nUptime: {elapsed//60}m\nPerformance: Stable")
+            if elapsed % 600 == 0:
+                await send_tg(f"📈 <b>Machine {node_id}</b>\nUptime: {elapsed//60}m\nStatus: Speed Stable")
 
         await context.close()
 
