@@ -5,8 +5,8 @@ import re
 import random
 import sys
 from playwright.async_api import async_playwright
-# 🔱 THE FIX: Explicitly import the async function from the stealth.async_api
-from playwright_stealth import stealth_async
+# 🔱 STABILITY FIX: Import the core stealth function
+from playwright_stealth import stealth
 
 # --- ⚙️ V100 TUNED SETTINGS ---
 TABS_PER_MACHINE = 2    
@@ -41,11 +41,15 @@ async def run_strike(node_id, cookie, target_id, target_name):
         for i in range(TABS_PER_MACHINE):
             page = await context.new_page()
             
-            # 🔱 STABILITY FIX: Using the explicit async stealth function
+            # 🔱 VERSION-PROOF STEALTH CALL
             try:
-                await stealth_async(page)
+                # Try calling it as an async function (common in newer versions)
+                await stealth(page)
+            except TypeError:
+                # Fallback: Call it as a sync function (common in older versions)
+                stealth(page)
             except Exception as e:
-                print(f"⚠️ Stealth warning on Machine {node_id}: {e}")
+                print(f"⚠️ Stealth skipped on Machine {node_id}: {e}")
             
             try:
                 await page.goto("https://www.google.com", wait_until="commit", timeout=5000)
@@ -63,7 +67,7 @@ async def run_strike(node_id, cookie, target_id, target_name):
                         `[${n}] 𝑻𝑬𝑹𝑰 𝑴𝑨𝑨 𝑲𝑨 𝑩𝑯𝑶𝑺𝑫𝑨 𝑷 𝑹 𝑽 𝑹 𝑷𝑨𝑷𝑨 𝑲𝑨 𝑮𝑼𝑳𝑨𝑴 🔥`,
                         `[${n}] 𝑷 𝑹 𝑽 𝑹 𝑷𝑨𝑷𝑨 𝑵𝑬 𝑻𝑬𝑹𝑰 𝑴𝑨𝑨 𝑲𝑶 𝑵𝑨𝑵𝑮𝑨 𝑲𝑨𝑹 𝑫𝑰𝒀𝑨 😂`,
                         `[${n}] 𝑹𝑼𝑵𝑫𝑰 𝑲𝑬 𝑩𝑨𝑪𝑪𝑯𝑬 𝑩𝑨𝑨𝑷 𝑺𝑬 𝑷𝑨𝑵𝑮𝑨 𝑵𝑨𝑯𝑰 𝑳𝑬𝑻𝑬 🤡`,
-                        `[${n}] 𝑷 𝑹 𝑽 𝑹 𝑷𝑨𝑷𝑨 𝑻𝑬𝑹𝑨 𝑲𝑯𝑨𝑨𝑵𝑫𝑨𝑨𝑵𝑰 𝑴𝑨𝑨𝑳𝑰𝑲 𝑯𝑨𝑰 👑`,
+                        `[${n}] 𝑷 𝑹 𝑽 𝑹 𝑷𝑨𝑷𝑨 𝑻𝑬𝑹𝑨 𝑲𝑯𝑨𝑨𝑵創造 𝑴𝑨𝑨𝑳𝑰𝑲 𝑯𝑨𝑰 👑`,
                         `[${n}] 𝑻𝑬𝑹𝑰 𝑴𝑨𝑨 𝑲𝑰 𝑪𝑯𝑼𝑻 𝑴𝑨𝑰 𝑷 𝑹 𝑽 𝑹 𝑷𝑨𝑷𝑨 𝑲𝑨 𝑯𝑨𝑻𝑯𝑶𝑫𝑨 🔨`,
                         `[${n}] 𝑱𝑨𝑳𝑫𝑰 𝑺𝑬 𝑷 𝑹 𝑽 𝑹 𝑷𝑨𝑷𝑨 𝑲𝑨 𝑳𝑨𝑼𝑫𝑨 𝑪𝑯𝑶𝑶𝑺 𝑳𝑬 𝑲𝑨𝑻𝑻𝑬 👅`
                     ];
