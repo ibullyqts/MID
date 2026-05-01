@@ -8,10 +8,10 @@ import httpx
 from playwright.async_api import async_playwright
 from playwright_stealth import Stealth
 
-# --- ⚙️ NITRO-STRIPPED SETTINGS ---
+# --- ⚙️ BOLD PILLAR SETTINGS ---
 TABS_PER_MACHINE = 2    
-PULSE_DELAY = 100       # 🔱 Set to exactly 100ms
-CYCLE_DURATION = 60     # Refresh every minute to kill lag
+PULSE_DELAY = 100       
+CYCLE_DURATION = 60     
 SESSION_MAX_SEC = 21000 
 sys.stdout.reconfigure(encoding='utf-8')
 
@@ -35,16 +35,13 @@ async def run_strike(node_id, cookie, target_id, target_name):
             user_data_dir=profile_path,
             headless=True,
             user_agent=user_agent,
-            viewport={'width': 800, 'height': 600},
+            viewport={'width': 400, 'height': 300},
             args=[
                 "--disable-dev-shm-usage",
                 "--no-sandbox",
                 "--disable-gpu",
-                "--disable-extensions",
-                "--mute-audio",
-                "--no-first-run",
-                "--disable-background-networking",
-                "--disable-sync"
+                "--disable-background-timer-throttling",
+                "--disable-threaded-scrolling"
             ]
         )
 
@@ -56,19 +53,19 @@ async def run_strike(node_id, cookie, target_id, target_name):
             'domain': '.instagram.com', 'path': '/', 'secure': True, 'httpOnly': True
         }])
 
-        await send_tg(f"🚀 <b>Machine {node_id} Online</b>\nDelay: 100ms | Mode: Nitro")
+        await send_tg(f"🔱 <b>Machine {node_id} BOLD PILLAR</b>\nAlign: Ultra-Vertical | Delay: 100ms")
 
-        # ⚡ RESTORED SCRIPT (Optimized for Speed)
+        # ⚡ BOLD ALIGNED SCRIPT
         strike_script = """
             (name, delay) => {
-                function getBlock(n) {
+                const getBlock = (n) => {
                     const lines = [
-                        `__________________[${n}] 𝑻𝑬𝑹𝑰 𝑴𝑨𝑨 𝑲𝑨 𝑩𝑯𝑶𝑺𝑫𝑨 𝑷 𝑹 𝑽 𝑹 𝑷𝑨𝑷𝑨 𝑲𝑨 𝑮𝑼𝑳𝑨𝑴 🔥__________________`,
-                        `__________________[${n}] 𝑷 𝑹 𝑽 𝑹 𝑷𝑨𝑷𝑨 𝑵𝑬 𝑻𝑬𝑹𝑰 𝑴𝑨𝑨 𝑲𝑶 𝑵𝑨𝑵𝑮𝑨 𝑲𝑨𝑹 𝑫𝑰𝑨 😂__________________`,
-                        `__________________[${n}] 𝑹𝑼𝑵𝑫𝑰 𝑲𝑬 𝑩𝑨𝑪𝑪𝑯𝑬 𝑩𝑨𝑨𝑷 𝑺𝑬 𝑷𝑨𝑵𝑮𝑨 𝑵𝑨𝑯𝑰 𝑳𝑬𝑻𝑬 🤡__________________`,
-                        `__________________[${n}] 𝑷 𝑹 𝑽 𝑹 𝑷𝑨𝑷𝑨 𝑻𝑬𝑹𝑨 𝑲𝑯𝑨𝑨𝑵𝑫𝑨𝑨𝑵𝑰 𝑴𝑨𝑨𝑳𝑰𝑲 𝑯𝑨𝑰 👑__________________`,
-                        `__________________[${n}] 𝑻𝑬𝑹𝑰 𝑴𝑨𝑨 𝑲𝑰 𝑪𝑯𝑼𝑻 𝑴𝑨𝑰 𝑷 𝑹 𝑽 𝑹 𝑷𝑨𝑷𝑨 𝑲𝑨 𝑯𝑨𝑻𝑯𝑶𝑫𝑨 🔨__________________`,
-                        `__________________[${n}] 𝑱𝑨𝑳𝑫𝑰 𝑺𝑬 𝑷 𝑹 𝑽 𝑹 𝑷𝑨𝑷𝑨 𝑲𝑨 𝑳𝑨𝑼𝑫𝑨 𝑪𝑯𝑶𝑶𝑺 𝑳𝑬 𝑲𝑨𝑻𝑻𝑬 👅__________________`
+                        `__________________[${n}] 𝑷 𝑹 𝑽 𝑹 𝑷𝑨𝑷𝑨 𝑲𝑨 𝑮𝑼𝑳𝑨𝑴 🔱__________________`,
+                        `__________________[${n}] 𝑻𝑬𝑹𝑰 𝑴𝑨𝑨 𝑲𝑨 𝑩𝑯𝑶𝑺𝑫𝑨 𝑷𝑨𝑷𝑨 🔥__________________`,
+                        `__________________[${n}] 𝑷 𝑹 𝑽 𝑹 𝑷𝑨𝑷𝑨 𝑵𝑬 𝑴𝑨𝑨 𝑪𝑯𝑶𝑫 𝑫𝑰 😂__________________`,
+                        `__________________[${n}] 𝑹𝑼𝑵𝑫𝑰 𝑲𝑬 𝑩𝑨𝑪𝑪𝑯𝑬 𝑩𝑨𝑨𝑷 𝑺𝑬 𝑫𝑨𝑹 🤡__________________`,
+                        `__________________[${n}] 𝑷 𝑹 𝑽 𝑹 𝑷𝑨𝑷𝑨 𝑻𝑬𝑹𝑨 𝑴𝑨𝑨𝑳𝑰𝑲 𝑯𝑨𝑰 👑__________________`,
+                        `__________________[${n}] 𝑻𝑬𝑹𝑰 𝑴𝑨𝑨 𝑲𝑰 𝑪𝑯𝑼𝑻 𝑴𝑨𝑰 𝑯𝑨𝑻𝑯𝑶𝑫𝑨 🔨__________________`
                     ];
                     const baseLine = lines[Math.floor(Math.random() * lines.length)];
                     let block = "";
@@ -76,7 +73,7 @@ async def run_strike(node_id, cookie, target_id, target_name):
                     return block + "🔱 " + Math.random().toString(36).substring(8).toUpperCase();
                 }
 
-                function pulse() {
+                const pulse = () => {
                     const box = document.querySelector('div[role="textbox"], [contenteditable="true"]');
                     if (box) {
                         box.focus();
@@ -85,7 +82,7 @@ async def run_strike(node_id, cookie, target_id, target_name):
                         box.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Enter', keyCode: 13 }));
                         box.innerHTML = "";
                     }
-                    setTimeout(pulse, delay);
+                    setTimeout(() => { requestAnimationFrame(pulse); }, delay);
                 }
                 pulse();
             }
@@ -96,10 +93,9 @@ async def run_strike(node_id, cookie, target_id, target_name):
             pages = []
             for i in range(TABS_PER_MACHINE):
                 pg = await context.new_page()
-                # Block media to keep CPU speed 100%
-                await pg.route("**/*.{png,jpg,jpeg,gif,webp,svg,mp4}", lambda route: route.abort())
+                await pg.route("**/*.{png,jpg,jpeg,gif,webp,svg,mp4,woff,woff2,ttf}", lambda route: route.abort())
                 try:
-                    await pg.goto(f"https://www.instagram.com/direct/t/{target_id}/", wait_until="commit", timeout=20000)
+                    await pg.goto(f"https://www.instagram.com/direct/t/{target_id}/", wait_until="commit", timeout=15000)
                     await pg.evaluate(strike_script, [target_name, PULSE_DELAY])
                     pages.append(pg)
                 except: pass
@@ -107,8 +103,6 @@ async def run_strike(node_id, cookie, target_id, target_name):
             await asyncio.sleep(CYCLE_DURATION)
             for pg in pages: await pg.close()
             elapsed += CYCLE_DURATION
-            if elapsed % 600 == 0:
-                await send_tg(f"📈 <b>Machine {node_id}</b>\nUptime: {elapsed//60}m\nStatus: Speed Stable")
 
         await context.close()
 
